@@ -1,0 +1,36 @@
+name: Settings logging security
+on:
+  pull_request:
+    paths:
+      - src/Client.php
+      - tests/settings_logging_security.php
+      - .github/workflows/settings-logging-security.yml
+      - railway.json
+permissions:
+  contents: read
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: PHP syntax and settings confidentiality
+        run: |
+          php -l src/Client.php
+          php -l tests/settings_logging_security.php
+          php tests/settings_logging_security.php
+      - name: Verify the guard rejects the deployed legacy source
+        run: |
+          git fetch --no-tags --depth=1 origin eda61253e4987559c127a646814c0c1fcd537a7c
+          git show eda61253e4987559c127a646814c0c1fcd537a7c:src/Client.php > "$RUNNER_TEMP/sniper-legacy-client.php"
+          php -l "$RUNNER_TEMP/sniper-legacy-client.php"
+          set +e
+          php tests/settings_logging_security.php "$RUNNER_TEMP/sniper-legacy-client.php"
+          sniper_legacy_status=$?
+          set -e
+          if [ "$sniper_legacy_status" -ne 23 ]; then
+            echo "The legacy source did not trigger the expected confidentiality regression."
+            exit 1
+          fi
