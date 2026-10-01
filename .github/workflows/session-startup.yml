@@ -1,0 +1,31 @@
+name: Session startup
+on:
+  pull_request:
+    paths:
+      - server.php
+      - src/Client.php
+      - src/Server/Server.php
+      - src/SessionStartup.php
+      - tests/session_startup.php
+      - .github/workflows/session-startup.yml
+permissions:
+  contents: read
+jobs:
+  startup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Lint startup files
+        run: |
+          php -l server.php
+          php -l src/Client.php
+          php -l src/Server/Server.php
+          php -l src/SessionStartup.php
+          php -l tests/session_startup.php
+      - name: Verify headless restoration and explicit CLI login offline
+        run: php tests/session_startup.php
+      - name: Verify settings still stay out of logs
+        run: php tests/settings_logging_security.php
