@@ -43,7 +43,7 @@ final class Server
 
         $config = self::getConfig($options);
         $server->expose(new InternetAddress($config['address'], $config['port']));
-        Client::getInstance()->connect($sessionFiles);
+        Client::getInstance()->connect($sessionFiles, $options['interactive_login'] ?? true);
         $errorHandler = new DefaultErrorHandler();
         $server->start((new Router($server, $errorHandler))->getRouter(), $errorHandler);
         self::registerShutdown($server);
