@@ -34,7 +34,7 @@ final class Client
         return self::$self;
     }
 
-    public function connect(array $sessionFiles)
+    public function connect(array $sessionFiles, bool $interactiveLogin = true)
     {
         warning(PHP_EOL . 'Starting MadelineProto...' . PHP_EOL);
 
@@ -46,7 +46,9 @@ final class Client
             $this->startLoggedInSession($sessionName);
         }
 
-        $this->startNotLoggedInSessions();
+        if ($interactiveLogin) {
+            $this->startNotLoggedInSessions();
+        }
 
         $sessionsCount = \count($sessionFiles);
         warning(
