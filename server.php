@@ -1,6 +1,7 @@
 <?php
 
 use TelegramApiServer\Files;
+use TelegramApiServer\SessionStartup;
 use TelegramApiServer\Migrations\StartUpFixes;
 
 if (PHP_SAPI !== 'cli') {
@@ -62,6 +63,11 @@ Example:
 }
 
 require_once __DIR__ . '/bootstrap.php';
+
+$options = SessionStartup::apply($options, getenv('SESSION'));
+if (!empty($options['session_configuration_error'])) {
+    warning('Ignored invalid SESSION configuration. Use a session name only; value omitted.');
+}
 
 $sessions = [];
 foreach ($options['session'] as $session) {
