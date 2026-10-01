@@ -197,10 +197,9 @@ final class Client
                 }
                 $method = 'set' . \ucfirst(\str_replace('_', '', \ucwords($key, '_')));
                 Logger::getInstance()->info(
-                    sprintf("Set setting %s::%s(%s)",
+                    sprintf("Set setting %s::%s",
                         get_class($settingsObject),
-                        $method,
-                        json_encode($value, JSON_UNESCAPED_UNICODE)
+                        $method
                     ));
                 $settingsObject->$method($value);
             }
