@@ -49,6 +49,7 @@ namespace danog\MadelineProto {
         public function phoneLogin(string $phone): void { $this->calls++; $this->state = self::WAITING_CODE; }
         public function completePhoneLogin(string $code): void {
             $this->calls++;
+            $this->state = self::NOT_LOGGED_IN;
             if ($code === '99999') throw new \RuntimeException('PHONE_CODE_INVALID with secret ' . $code);
             $this->state = self::WAITING_PASSWORD;
         }
@@ -125,7 +126,11 @@ namespace {
     $r = $handler->handleRequest($post($phone, $headers));
     check($r->status === 200 && json_decode($r->body, true)['state'] === 'CODE_REQUIRED', 'Phone flow failed');
     $bad = $handler->handleRequest($post(['action' => 'code', 'value' => '99999'], $headers));
-    check($bad->status === 400 && $bad->body === '{"error":"PHONE_CODE_INVALID"}', 'Code leaked in error');
+    $badData = json_decode($bad->body, true);
+    check($bad->status === 400 && $badData['error'] === 'PHONE_CODE_INVALID' && !str_contains($bad->body, '99999'), 'Code leaked in error');
+    check($badData['state'] === 'PHONE_REQUIRED', 'Real MadelineProto state after bad OTP lost');
+    // Simulate a subsequent successful code request after the owner waits for the rate limit.
+    \TelegramApiServer\Client::getInstance()->api->state = \danog\MadelineProto\API::WAITING_CODE;
     $r = $handler->handleRequest($post(['action' => 'code', 'value' => '12345'], $headers));
     check(json_decode($r->body, true)['state'] === 'PASSWORD_REQUIRED', '2FA flow failed');
     $r = $handler->handleRequest($post(['action' => 'password', 'value' => 'offline-2fa'], $headers));

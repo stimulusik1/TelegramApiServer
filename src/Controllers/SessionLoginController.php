@@ -142,13 +142,27 @@ final class SessionLoginController
         } catch (\JsonException) {
             return $this->response(400, ['error' => 'INVALID_JSON']);
         } catch (\Throwable $error) {
-            return $this->response(400, ['error' => SessionLoginPolicy::safeError($error)]);
+            $data = ['error' => SessionLoginPolicy::safeError($error)];
+            if (isset($api)) {
+                $data['state'] = $this->authorizationState($api);
+            }
+            return $this->response(400, $data);
         }
     }
 
     private function state(API $api): array
     {
-        $state = match ($api->getAuthorization()) {
+        $state = $this->authorizationState($api);
+        // A saved auth flag alone is insufficient: verify that Telegram accepts the key.
+        if ($state === 'LOGGED_IN') {
+            $api->users->getUsers(id: [['_'=>'inputUserSelf']]);
+        }
+        return ['state' => $state, 'persistent' => true];
+    }
+
+    private function authorizationState(API $api): string
+    {
+        return match ($api->getAuthorization()) {
             API::NOT_LOGGED_IN, API::LOGGED_OUT => 'PHONE_REQUIRED',
             API::WAITING_CODE => 'CODE_REQUIRED',
             API::WAITING_PASSWORD => 'PASSWORD_REQUIRED',
@@ -156,10 +170,5 @@ final class SessionLoginController
             API::LOGGED_IN => 'LOGGED_IN',
             default => 'UNKNOWN_STATE',
         };
-        // A saved auth flag alone is insufficient: verify that Telegram accepts the key.
-        if ($state === 'LOGGED_IN') {
-            $api->users->getUsers(id: [['_'=>'inputUserSelf']]);
-        }
-        return ['state' => $state, 'persistent' => true];
     }
 }
