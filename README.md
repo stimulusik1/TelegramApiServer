@@ -336,6 +336,29 @@ Each session stored in `sessions/{$session}.madeline`. Nested folders supported.
 Full list of system methods available in [SystemApiExtensions class](https://github.com/xtrime-ru/TelegramApiServer/blob/master/src/MadelineProtoExtensions/SystemApiExtensions.php)
 
 ### Authorizing session remotely
+
+#### Protected mobile recovery
+
+This fork has an optional `/session-login` page for reconnecting the configured
+`SESSION` from a phone. It is disabled unless `SESSION_LOGIN_ENABLED=true`.
+
+Before using it on Railway, attach a persistent volume at `/app/sessions`.
+`RAILWAY_VOLUME_MOUNT_PATH` must resolve to that directory. Login operations are
+blocked otherwise, so a newly authorized session cannot accidentally be written
+only to an ephemeral container. Keep one replica for this session.
+
+Open the page over HTTPS and enter the existing server Basic Auth credential in
+the browser prompt. Enter the Telegram phone number, code, and optional 2FA
+password only in the protected page. The page uses POST bodies, checks same-origin
+requests and expiring CSRF tokens, has no analytics or external assets, and does
+not return account details, raw login responses, or exception traces. It never
+registers a new account or resets an already logged-in session. After login it
+serializes the session and makes a self-only Telegram RPC to verify authorization.
+
+Disable the page again with `SESSION_LOGIN_ENABLED=false` after checking that
+the session survives a deployment restart. Do not place credentials in URLs,
+execution notes, spreadsheets, messages, or source control.
+
 WARNING: it is recomended to use interactive mode to authorize sessions!
 If there is no authorization in session, or session file is blank, authorization required:
 

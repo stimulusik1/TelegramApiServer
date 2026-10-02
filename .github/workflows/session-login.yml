@@ -1,0 +1,29 @@
+name: Session recovery
+on:
+  pull_request:
+    paths:
+      - src/Controllers/SessionLoginController.php
+      - src/SessionLoginPolicy.php
+      - src/Server/Router.php
+      - resources/session-login.html
+      - tests/session_login.php
+      - .github/workflows/session-login.yml
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Lint and verify protected mobile recovery offline
+        run: |
+          php -l src/Controllers/SessionLoginController.php
+          php -l src/SessionLoginPolicy.php
+          php -l src/Server/Router.php
+          php -l tests/session_login.php
+          php tests/session_login.php
+          php tests/session_startup.php
+          php tests/settings_logging_security.php

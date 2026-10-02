@@ -10,6 +10,7 @@ use Amp\Http\Server\SocketHttpServer;
 use TelegramApiServer\Controllers\ApiController;
 use TelegramApiServer\Controllers\EventsController;
 use TelegramApiServer\Controllers\LogController;
+use TelegramApiServer\Controllers\SessionLoginController;
 use TelegramApiServer\Controllers\SystemController;
 use TelegramApiServer\Logger;
 use TelegramApiServer\MadelineProtoExtensions\ApiExtensions;
@@ -56,6 +57,12 @@ final class Router
         $systemApiHandler = stackMiddleware(SystemController::getRouterCallback(), ...$middlewares);
         $eventsHandler = stackMiddleware(EventsController::getRouterCallback($this->server), ...$middlewares);
         $logHandler = stackMiddleware(LogController::getRouterCallback($this->server), ...$middlewares);
+
+        // Recovery has strict credential/CSRF checks and deliberately no request/exception logger.
+        $loginHandler = SessionLoginController::getRouterCallback();
+        $this->router->addRoute('GET', '/session-login', $loginHandler);
+        $this->router->addRoute('GET', '/session-login/state', $loginHandler);
+        $this->router->addRoute('POST', '/session-login', $loginHandler);
 
         foreach (['GET', 'POST'] as $method) {
             $this->router->addRoute($method, '/api/{method}[/]', $apiHandler);
