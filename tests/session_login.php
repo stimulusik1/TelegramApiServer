@@ -33,15 +33,24 @@ namespace Amp\Http\Server\RequestHandler {
 namespace Amp\Sync { final class LocalMutex { public function acquire(): object { return new \stdClass(); } } }
 namespace danog\MadelineProto {
     final class API {
-        public const NOT_LOGGED_IN = 0, WAITING_CODE = 1, WAITING_PASSWORD = 2, WAITING_SIGNUP = 3, LOGGED_IN = 4, LOGGED_OUT = 5;
-        public int $state = self::NOT_LOGGED_IN, $calls = 0, $serialized = 0, $selfChecks = 0;
-        public object $users;
+        public const NOT_LOGGED_IN = 0, WAITING_CODE = 1, WAITING_PASSWORD = 2, WAITING_SIGNUP = -1, LOGGED_IN = 3, LOGGED_OUT = 4;
+        public int $state = self::NOT_LOGGED_IN, $calls = 0, $serialized = 0, $authChecks = 0, $blockedUserCalls = 0;
+        public object $users, $updates;
         public function __construct() {
             $this->users = new class($this) {
                 public function __construct(private API $api) {}
                 public function getUsers(array $id): array {
-                    if ($id !== [['_'=>'inputUserSelf']]) throw new \RuntimeException('Not a self-only query');
-                    $this->api->selfChecks++; return ['phone' => 'never-output-this'];
+                    // MadelineProto 8.7.0 blocks this direct RPC in Namespace\Blacklist.
+                    $this->api->blockedUserCalls++;
+                    throw new \RuntimeException('You cannot use this method directly');
+                }
+            };
+            $this->updates = new class($this) {
+                public function __construct(private API $api) {}
+                public function getState(): array {
+                    if ($this->api->state !== API::LOGGED_IN) throw new \RuntimeException('AUTH_KEY_UNREGISTERED');
+                    $this->api->authChecks++;
+                    return ['_' => 'updates.state', 'pts' => 918172, 'qts' => 2, 'date' => 1800000000, 'seq' => 7, 'unread_count' => 1];
                 }
             };
         }
@@ -134,9 +143,12 @@ namespace {
     $r = $handler->handleRequest($post(['action' => 'code', 'value' => '12345'], $headers));
     check(json_decode($r->body, true)['state'] === 'PASSWORD_REQUIRED', '2FA flow failed');
     $r = $handler->handleRequest($post(['action' => 'password', 'value' => 'offline-2fa'], $headers));
-    check(json_decode($r->body, true)['state'] === 'LOGGED_IN' && !str_contains($r->body, 'never-output-this'), 'Account data leaked');
+    check($r->status === 200 && json_decode($r->body, true)['state'] === 'LOGGED_IN' && !str_contains($r->body, '918172'), 'Successful login was rejected or update metadata leaked');
     $client = \TelegramApiServer\Client::getInstance();
-    check($client->api->serialized === 1 && $client->started === 1 && $client->api->selfChecks === 1, 'Final auth not verified/saved');
+    check($client->api->serialized === 1 && $client->started === 1 && $client->api->authChecks === 1 && $client->api->blockedUserCalls === 0, 'Final auth not verified/saved with a supported RPC');
+    $r = $handler->handleRequest($get($headers, '/session-login/state'));
+    check($r->status === 200 && json_decode($r->body, true) === ['state' => 'LOGGED_IN', 'persistent' => true], 'Authorized status refresh failed');
+    check($client->api->authChecks === 2 && !str_contains($r->body, 'pts'), 'Status refresh did not verify auth safely');
     check($handler->handleRequest($post($phone, $headers))->status === 409, 'Existing healthy session changed');
     $client->api->state = \danog\MadelineProto\API::NOT_LOGGED_IN;
     check($handler->handleRequest($post($phone, $headers))->status === 429, 'Phone rate limit missing');

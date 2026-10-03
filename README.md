@@ -353,7 +353,8 @@ password only in the protected page. The page uses POST bodies, checks same-orig
 requests and expiring CSRF tokens, has no analytics or external assets, and does
 not return account details, raw login responses, or exception traces. It never
 registers a new account or resets an already logged-in session. After login it
-serializes the session and makes a self-only Telegram RPC to verify authorization.
+serializes the session and verifies authorization with `updates.getState`, a
+read-only RPC that requires user authorization. Its update counters are discarded.
 
 Disable the page again with `SESSION_LOGIN_ENABLED=false` after checking that
 the session survives a deployment restart. Do not place credentials in URLs,

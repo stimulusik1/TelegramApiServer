@@ -155,7 +155,9 @@ final class SessionLoginController
         $state = $this->authorizationState($api);
         // A saved auth flag alone is insufficient: verify that Telegram accepts the key.
         if ($state === 'LOGGED_IN') {
-            $api->users->getUsers(id: [['_'=>'inputUserSelf']]);
+            // Direct users.getUsers is blocked by MadelineProto. updates.getState
+            // requires user authorization and its counters are never returned.
+            $api->updates->getState();
         }
         return ['state' => $state, 'persistent' => true];
     }
