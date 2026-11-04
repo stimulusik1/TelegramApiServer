@@ -15,10 +15,10 @@ COPY --from=ghcr.io/ufoscout/docker-compose-wait:latest \
 # Сначала копируем файлы Composer
 COPY composer.json composer.lock ./
 
-# Устанавливаем зависимости через Git, а не через GitHub ZIP
+# Install locked archives: the fork contains a locked commit not reachable by git clone.
 RUN composer install \
     --no-dev \
-    --prefer-source \
+    --prefer-dist \
     --no-interaction \
     --no-progress \
     --optimize-autoloader
