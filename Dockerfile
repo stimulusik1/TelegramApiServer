@@ -1,4 +1,5 @@
-FROM danog/madelineproto:latest
+# Pin the base used by the last built image; latest changed its default build user.
+FROM danog/madelineproto@sha256:5e987806f071dd8b2fa1fab7850538eec81ab8d4b1088d14385166e1762db9ac
 
 STOPSIGNAL SIGTERM
 
